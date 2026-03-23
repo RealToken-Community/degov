@@ -108,7 +108,7 @@ treasuryAssets:
 
 # The DAO Safe information
 safes:
-  - name: Liquidity comittee Safe (Gnosis)
+  - name: Liquidity committee Safe (Gnosis)
     chainId: 100
     link: https://app.safe.global/home?safe=gno:0x0212B941Cb5c80c9FcDA00035D126Ac067169E72
 
