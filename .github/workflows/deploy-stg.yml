@@ -74,7 +74,7 @@ jobs:
 
             cd /var/docker/degov/git
             git pull origin \$DOCKER_BRANCH
-            docker compose --file docker-compose.yml pull
+            docker compose --file docker-compose.yml build
 
             CHAIN_RPC_1="$CHAIN_RPC_1"
             CHAIN_RPC_100="$CHAIN_RPC_100"
