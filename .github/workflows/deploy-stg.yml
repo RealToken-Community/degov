@@ -13,19 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_LOGIN }}
-          password: ${{ secrets.DOCKER_PASSWD }}
+#      - name: Login to registry
+#        uses: docker/login-action@v3
+#        with:
+#          registry: ${{ secrets.DOCKER_REGISTRY }}
+#          username: ${{ secrets.DOCKER_LOGIN }}
+#          password: ${{ secrets.DOCKER_PASSWD }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKER_REGISTRY }}/degov:${{ github.ref_name }}
+#      - name: Build and push Docker image
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: .
+#          push: true
+#          tags: ${{ secrets.DOCKER_REGISTRY }}/degov:${{ github.ref_name }}
 
       - name: Configure SSH
         run: |
@@ -49,9 +49,9 @@ jobs:
       - name: Update branch environment
         env:
           DOCKER_BRANCH: ${{ github.ref_name }}
-          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
-          DOCKER_PASSWD: ${{ secrets.DOCKER_PASSWD }}
+#          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+#          DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
+#          DOCKER_PASSWD: ${{ secrets.DOCKER_PASSWD }}
           DOMAIN_URL: ${{ secrets.DOMAIN_URL_PREPROD }}
           CHAIN_RPC_1: ${{ secrets.CHAIN_RPC_1 }}
           CHAIN_RPC_100: ${{ secrets.CHAIN_RPC_100 }}
@@ -71,12 +71,12 @@ jobs:
           ssh staging <<EOF
             set -euxo pipefail
             export DOCKER_BRANCH="$DOCKER_BRANCH"
-            export DOCKER_REGISTRY="$DOCKER_REGISTRY"
+#            export DOCKER_REGISTRY="$DOCKER_REGISTRY"
 
             cd /var/docker/degov/git
             git pull origin \$DOCKER_BRANCH
             docker compose --file docker-compose.yml pull
-            docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWD" \$DOCKER_REGISTRY
+#            docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWD" \$DOCKER_REGISTRY
 
             CHAIN_RPC_1="$CHAIN_RPC_1"
             CHAIN_RPC_100="$CHAIN_RPC_100"
