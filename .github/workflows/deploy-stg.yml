@@ -53,8 +53,8 @@ jobs:
           DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
           DOCKER_PASSWD: ${{ secrets.DOCKER_PASSWD }}
           DOMAIN_URL: ${{ secrets.DOMAIN_URL_PREPROD }}
-          CHAIN_RPC_1: ${{ secrets.RPC_URLS_ETH_MAINNET }}
-          CHAIN_RPC_100: ${{ secrets.RPC_URLS_GNOSIS_MAINNET }}
+          CHAIN_RPC_1: ${{ secrets.CHAIN_RPC_1 }}
+          CHAIN_RPC_100: ${{ secrets.CHAIN_RPC_100 }}
           DEGOV_DB_PASSWORD: ${{ secrets.DEGOV_DB_PASSWORD }}
           DEGOV_WEB_JWT_SECRET: ${{ secrets.DEGOV_WEB_JWT_SECRET }}
           DEGOV_SYNC_AUTH_TOKEN: ${{ secrets.DEGOV_SYNC_AUTH_TOKEN }}
