@@ -7,23 +7,76 @@ on:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Deploy to branch
     runs-on: ubuntu-latest
+    needs: validate
     steps:
       - uses: actions/checkout@v4
 
-      - uses: darwinia-network/devops/actions/smart-vercel@main
-        name: Deploy degov
+      - name: Login to registry
+        uses: docker/login-action@v3
         with:
-          node_version: 22
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_group: itering
-          preview_output: true
-          alias_domain: "degov-stg"
-          project_name: "degov"
-          script_run: false
-          dist_path: .
-          enable_notify_slack: false
-          slack_channel: public-degov
-          slack_webhook: ${{ secrets.SLACK_INCOMING_WEBHOOK_URL }}
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_LOGIN }}
+          password: ${{ secrets.DOCKER_PASSWD }}
 
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_REGISTRY }}/degov:${{ github.ref_name }}
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/staging.key
+          chmod 600 ~/.ssh/staging.key
+          cat >>~/.ssh/config <<END
+          Host staging
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile ~/.ssh/staging.key
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+
+      - name: Update branch environment
+        env:
+          DOCKER_BRANCH: ${{ github.ref_name }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
+          DOCKER_PASSWD: ${{ secrets.DOCKER_PASSWD }}
+          DOMAIN_URL: ${{ secrets.DOMAIN_URL }}
+          RPC_URLS_ETH_MAINNET: ${{ secrets.RPC_URLS_ETH_MAINNET }}
+          RPC_URLS_GNOSIS_MAINNET: ${{ secrets.RPC_URLS_GNOSIS_MAINNET }}
+        run: |
+          if [[ "$DOCKER_BRANCH" == "main" ]]; then
+            export HOSTNAME="degov.backup.$DOMAIN_URL"
+          elif [[ "$DOCKER_BRANCH" == "preprod" ]]; then
+            export HOSTNAME="degov.backup.$DOCKER_BRANCH.$DOMAIN_URL"
+          else
+            export HOSTNAME="degov.backup.$DOCKER_BRANCH.$DOMAIN_URL"
+          fi
+
+          ssh staging <<EOF
+            set -euxo pipefail
+            export DOCKER_BRANCH="$DOCKER_BRANCH"
+            export DOCKER_REGISTRY="$DOCKER_REGISTRY"
+
+            cd /var/docker/degov/git
+            git pull origin \$DOCKER_BRANCH
+            docker compose --file docker-compose.yml pull
+            docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWD" \$DOCKER_REGISTRY
+
+            THEGRAPH_API_KEY="$THEGRAPH_API_KEY" \
+            RPC_URLS_ETH_MAINNET="$RPC_URLS_ETH_MAINNET" \
+            RPC_URLS_GNOSIS_MAINNET="$RPC_URLS_GNOSIS_MAINNET" \
+            HOSTNAME="$HOSTNAME" \
+            docker compose --project-name \$DOCKER_BRANCH-degov --file docker-compose.yml up -d
+          EOF

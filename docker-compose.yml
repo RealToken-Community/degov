@@ -8,8 +8,10 @@ services:
     volumes:
       - ./.data/postgres:/var/lib/postgresql/data
       - ./init-scripts/postgres:/docker-entrypoint-initdb.d
-    ports:
-      - "${DEGOV_DB_PORT:-5432}:5432"
+#    ports:
+#      - "${DEGOV_DB_PORT:-5432}:5432"
+    networks:
+      - degov
 
   indexer:
     image: degov-indexer
@@ -18,8 +20,8 @@ services:
     build:
       context: .
       dockerfile: docker/indexer.Dockerfile
-    ports:
-      - "${DEGOV_INDEXER_PORT:-4350}:4350"
+#    ports:
+#      - "${DEGOV_INDEXER_PORT:-4350}:4350"
     volumes:
       - ./degov.yml:/app/degov.yml
     environment:
@@ -37,6 +39,15 @@ services:
       DEGOV_CONFIG_PATH: degov.yml
       # CHAIN_RPC_10: ${CHAIN_RPC_10}
       # CHAIN_RPC_...: ${CHAIN_RPC_...}
+    networks:
+      - degov
+      - traefik-realt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.degov-api.rule=Host(`api.degov.backup.realtoken.community`)"
+#      - "traefik.http.routers.degov-api.middlewares=auth@file"
+      - "traefik.http.services.degov-api.loadbalancer.server.port=4350"
+    restart: unless-stopped
 
   web:
     image: degov-web
@@ -45,10 +56,24 @@ services:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
-    ports:
-      - "${DEGOV_WEB_PORT:-3000}:3000"
+#    ports:
+#      - "${DEGOV_WEB_PORT:-3000}:3000"
     environment:
       JWT_SECRET_KEY: ${DEGOV_WEB_JWT_SECRET}
       DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD}@postgres/degov
       DEGOV_SYNC_AUTH_TOKEN: ${DEGOV_SYNC_AUTH_TOKEN}
       # DEGOV_CONFIG_PATH: degov.yml
+    networks:
+      - degov
+      - traefik-realt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.degov-web.rule=Host(`degov.backup.realtoken.community`)"
+#      - "traefik.http.routers.degov-web.middlewares=auth@file"
+      - "traefik.http.services.degov-web.loadbalancer.server.port=3000"
+    restart: unless-stopped
+
+networks:
+  degov:
+  traefik-realt:
+    external: true
