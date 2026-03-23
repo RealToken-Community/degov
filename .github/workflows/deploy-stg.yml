@@ -1,3 +1,4 @@
+
 name: Deploy staging
 
 on:
@@ -67,16 +68,13 @@ jobs:
           else
             export HOSTNAME="degov.$DOCKER_BRANCH.$DOMAIN_URL"
           fi
-
           ssh staging <<EOF
             set -euxo pipefail
             export DOCKER_BRANCH="$DOCKER_BRANCH"
-#            export DOCKER_REGISTRY="$DOCKER_REGISTRY"
 
             cd /var/docker/degov/git
             git pull origin \$DOCKER_BRANCH
             docker compose --file docker-compose.yml pull
-#            docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWD" \$DOCKER_REGISTRY
 
             CHAIN_RPC_1="$CHAIN_RPC_1"
             CHAIN_RPC_100="$CHAIN_RPC_100"
