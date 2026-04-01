@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_PAGE_SIZE } from "@/config/base";
@@ -9,7 +10,7 @@ import {
   PAGINATION_DOTS,
   usePaginationRange,
 } from "@/hooks/usePaginationRange";
-import { delegateService } from "@/services/graphql";
+import { buildGovernanceScope, delegateService } from "@/services/graphql";
 import type { DelegateItem } from "@/services/graphql/types";
 
 import { AddressAvatar } from "../address-avatar";
@@ -38,9 +39,14 @@ export function DelegationList({
   orderBy,
   totalCount,
 }: DelegationListProps) {
+  const t = useTranslations("profile.receivedDelegations");
   const formatTokenAmount = useFormatGovernanceTokenAmount();
   const daoConfig = useDaoConfig();
   const [currentPage, setCurrentPage] = useState(1);
+  const governanceScope = useMemo(
+    () => buildGovernanceScope(daoConfig),
+    [daoConfig]
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -69,14 +75,22 @@ export function DelegationList({
       orderBy,
       currentPage,
       pageSize,
+      governanceScope,
     ],
     queryFn: () =>
-      delegateService.getAllDelegates(daoConfig?.indexer?.endpoint as string, {
-        limit: pageSize,
-        offset: (currentPage - 1) * pageSize,
-        orderBy,
-        where: { toDelegate_eq: address.toLowerCase() },
-      }),
+      delegateService.getAllDelegates(
+        daoConfig?.indexer?.endpoint as string,
+        {
+          limit: pageSize,
+          offset: (currentPage - 1) * pageSize,
+          orderBy,
+          where: {
+            ...governanceScope,
+            toDelegate_eq: address.toLowerCase(),
+            isCurrent_eq: true,
+          },
+        }
+      ),
     enabled: !!daoConfig?.indexer?.endpoint && !!address,
     placeholderData: (previous) => previous ?? [],
   });
@@ -128,7 +142,7 @@ export function DelegationList({
   if (!pageData || pageData.length === 0) {
     return (
       <div className="rounded-[14px] bg-card p-[20px] text-center text-muted-foreground">
-        No delegations yet
+        {t("empty")}
       </div>
     );
   }

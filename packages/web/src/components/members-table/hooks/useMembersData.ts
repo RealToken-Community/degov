@@ -9,8 +9,13 @@ import { useAiBotAddress } from "@/hooks/useAiBotAddress";
 import { useBatchProfiles } from "@/hooks/useBatchProfiles";
 import { useDaoConfig } from "@/hooks/useDaoConfig";
 import { normalizeAddress } from "@/hooks/useProfileQuery";
-import { contributorService } from "@/services/graphql";
+import {
+  buildGovernanceScope,
+  contributorService,
+} from "@/services/graphql";
 import type { ContributorItem } from "@/services/graphql/types";
+
+import { DEFAULT_ORDER_BY } from "../types";
 
 type PageParam = {
   offset: number;
@@ -24,12 +29,15 @@ export function useMembersData(
   orderBy?: string,
   includeBotInQuery = false
 ) {
-  const DEFAULT_ORDER_BY = "lastVoteTimestamp_DESC_NULLS_LAST";
   const daoConfig = useDaoConfig();
   const { botAddress } = useAiBotAddress();
   const isSearching = searchTerm.trim().length > 0;
   const normalizedInitialPageSize = Math.max(pageSize, initialPageSize);
   const publicClient = usePublicClient({ chainId: mainnet.id });
+  const governanceScope = useMemo(
+    () => buildGovernanceScope(daoConfig),
+    [daoConfig]
+  );
 
   const resolveSearchAddress = useCallback(
     async (rawTerm: string): Promise<Address | undefined> => {
@@ -68,6 +76,7 @@ export function useMembersData(
       orderBy ?? DEFAULT_ORDER_BY,
       DEFAULT_ORDER_BY,
       includeBotInQuery,
+      governanceScope,
     ],
     queryFn: async ({ pageParam }) => {
       const { offset, limit } = (pageParam as PageParam) ?? {
@@ -89,6 +98,7 @@ export function useMembersData(
             offset: 0,
             orderBy,
             where: {
+              ...governanceScope,
               id_eq: resolvedAddress,
             },
           }
@@ -106,8 +116,9 @@ export function useMembersData(
           offset,
           orderBy: effectiveOrderBy,
           where: shouldIncludeBot
-            ? {}
+            ? governanceScope
             : {
+                ...governanceScope,
                 id_not_eq: botAddress,
               },
         }
