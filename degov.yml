@@ -58,6 +58,7 @@ chain:
 indexer:
   endpoint: https://api.degov.backup.realtoken.community/graphql
   startBlock: 35476388
+  gateway: https://v2.archive.subsquid.io/network/gnosis-mainnet
   # if set this, indexer rpc will be use this first
   rpc:
     - wss://rpc.gnosischain.com
