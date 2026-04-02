@@ -59,8 +59,6 @@ indexer:
   endpoint: https://api.degov.backup.realtoken.community/graphql
   startBlock: 35476388
   gateway: https://v2.archive.subsquid.io/network/gnosis-mainnet
-  # if set this, indexer rpc will be use this first
-  rpc: wss://rpc.gnosischain.com
 
   ## https://docs.sqd.ai/sdk/reference/processors/evm-batch/general/#set-finality-confirmation
   #finalityConfirmation: 50
