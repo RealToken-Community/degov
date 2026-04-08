@@ -1,14 +1,14 @@
-
+.data
+.data/**
 .env
-.next
-
 .git
-node_modules
+.next
+*.log
 
 # OS Files
 .DS_Store
 
-.data
-.data/**
-*.log
-
+Dockerfile*
+docker-compose*
+node_modules
+dist
