@@ -1,7 +1,6 @@
-
+.data
+.data/**
 .env
-.next
-
 .git
 node_modules
 packages/*/node_modules
@@ -11,7 +10,12 @@ packages/indexer/lib
 coverage
 .turbo
 .pnpm-store
+.next
 *.log
 
 # OS Files
 .DS_Store
+
+Dockerfile*
+docker-compose*
+dist
