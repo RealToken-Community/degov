@@ -69,10 +69,6 @@ indexer:
   ## https://docs.sqd.ai/subsquid-network/reference/networks/#evm--ethereum-compatible
   #gateway:
 
-# AI Agent related configuration
-aiAgent:
-  # endpoint: https://agent.degov.ai
-
 # Core contracts related to the DAO Governance
 contracts:
   governor: "0x4a5327347f077e72d2aab19f68ba8a7f12ec5d63"

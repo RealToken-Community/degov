@@ -2,6 +2,14 @@
 .data/**
 .env
 .git
+node_modules
+packages/*/node_modules
+packages/web/.next
+packages/indexer/.data
+packages/indexer/lib
+coverage
+.turbo
+.pnpm-store
 .next
 *.log
 
@@ -10,5 +18,4 @@
 
 Dockerfile*
 docker-compose*
-node_modules
 dist

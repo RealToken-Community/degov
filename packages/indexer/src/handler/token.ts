@@ -473,7 +473,14 @@ export class TokenHandler {
       return false;
     }
 
-    return false;
+    if (!this.isInitialSelfDelegationRolling(delegateRolling)) {
+      return false;
+    }
+
+    return (
+      delegateRolling.delegator.toLowerCase() === account.toLowerCase() &&
+      !this.isZeroAddress(delegateRolling.toDelegate)
+    );
   }
 
   private findBestDelegateRollingMatch(
@@ -1411,10 +1418,7 @@ export class TokenHandler {
       currentDelegate.power = persistedPower;
       await this.ctx.store.insert(currentDelegate);
       this.rememberDelegate(currentDelegate);
-      if (
-        options?.replaceStoredPowerWith === undefined ||
-        persistedPower !== 0n
-      ) {
+      if (persistedPower !== 0n) {
         delegatesCountEffective += 1;
       }
     } else {
