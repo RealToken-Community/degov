@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:17-alpine
+    container_name: degov_db
     shm_size: 1gb
     environment:
       POSTGRES_DB: ${DEGOV_DB_NAME:-postgres}
@@ -15,6 +16,7 @@ services:
 
   indexer-migrate:
     image: degov-indexer
+    container_name: degov_indexer-migrate
     profiles:
       - indexer
     depends_on:
@@ -28,6 +30,7 @@ services:
 
   indexer:
     image: degov-indexer
+    container_name: degov_indexer
     profiles:
       - indexer
     depends_on:
@@ -65,6 +68,7 @@ services:
 
   onchain-worker:
     image: degov-indexer
+    container_name: degov_indexer-onchain
     profiles:
       - indexer
     depends_on:
@@ -100,6 +104,7 @@ services:
 
   indexer-graphql:
     image: degov-indexer
+    container_name: degov_indexer-graphql
     profiles:
       - indexer
     depends_on:
@@ -111,7 +116,8 @@ services:
 #    ports:
 #      - "${DEGOV_INDEXER_PORT:-4350}:4350"
     volumes:
-      - ./degov.yml:/app/degov.yml
+#      - ./degov.yml:/app/degov.yml
+      - ./degov.yml:/app/packages/indexer/degov.yml
     environment:
       DEGOV_INDEXER_DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/indexer
       DEGOV_INDEXER_GRAPHQL_ENDPOINT: ${DEGOV_INDEXER_GRAPHQL_BIND_ENDPOINT:-http://0.0.0.0:4350/graphql}
@@ -139,6 +145,7 @@ services:
 
   web:
     image: degov-web
+    container_name: degov_app
     depends_on:
       - postgres
     build:
@@ -162,6 +169,7 @@ services:
 
   web-local-indexer:
     image: degov-web-local-indexer
+    container_name: degov_indexer-local
     profiles:
       - indexer
     depends_on:
