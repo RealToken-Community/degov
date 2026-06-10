@@ -1,7 +1,6 @@
-
+.data
+.data/**
 .env
-.next
-
 .git
 node_modules
 apps/*/node_modules
@@ -12,7 +11,12 @@ target
 coverage
 .turbo
 .pnpm-store
+.next
 *.log
 
 # OS Files
 .DS_Store
+
+Dockerfile*
+docker-compose*
+dist
