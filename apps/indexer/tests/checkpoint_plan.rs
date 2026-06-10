@@ -1,0 +1,185 @@
+use std::time::Duration;
+
+use degov_datalens_indexer::checkpoint::configured_range_progress;
+use degov_datalens_indexer::{
+    AdaptiveChunkFeedback, AdaptiveChunkSizer, AdaptiveChunkSizerConfig, CheckpointBlockRange,
+    DatalensWarmupEffectivenessAggregation, IndexerCheckpoint, IndexerCheckpointIdentity,
+    plan_next_checkpoint_range,
+};
+
+fn checkpoint(next_block: i64) -> IndexerCheckpoint {
+    IndexerCheckpoint {
+        identity: IndexerCheckpointIdentity {
+            dao_code: "demo-dao".to_owned(),
+            chain_id: 1,
+            contract_set_id: "demo-scope".to_owned(),
+            stream_id: "governor-and-token-logs".to_owned(),
+            data_source_version: "datalens-v1".to_owned(),
+        },
+        next_block,
+        processed_height: None,
+        target_height: None,
+        updated_at: "1970-01-01 00:00:00+00".to_owned(),
+        last_error: None,
+        lock_owner: None,
+        locked_at: None,
+    }
+}
+
+#[test]
+fn test_plan_next_checkpoint_range_limits_to_target_height() {
+    let range = plan_next_checkpoint_range(&checkpoint(100), 25, 110)
+        .expect("valid range")
+        .expect("range");
+
+    assert_eq!(
+        range,
+        CheckpointBlockRange {
+            from_block: 100,
+            to_block: 110,
+        }
+    );
+}
+
+#[test]
+fn test_plan_next_checkpoint_range_returns_none_when_checkpoint_caught_up() {
+    let range = plan_next_checkpoint_range(&checkpoint(111), 25, 110).expect("valid range");
+
+    assert_eq!(range, None);
+}
+
+#[test]
+fn test_configured_range_progress_counts_from_start_block() {
+    let progress = configured_range_progress(Some(109), 100, 199);
+
+    assert_eq!(progress.remaining_blocks, 90);
+    assert_eq!(progress.synced_percentage, 10.0);
+}
+
+#[test]
+fn test_configured_range_progress_clamps_missing_and_below_start_progress() {
+    let missing = configured_range_progress(None, 100, 199);
+    let below_start = configured_range_progress(Some(99), 100, 199);
+
+    assert_eq!(missing.remaining_blocks, 100);
+    assert_eq!(missing.synced_percentage, 0.0);
+    assert_eq!(below_start.remaining_blocks, 100);
+    assert_eq!(below_start.synced_percentage, 0.0);
+}
+
+#[test]
+fn test_configured_range_progress_handles_invalid_ranges_as_complete() {
+    let progress = configured_range_progress(None, 200, 199);
+
+    assert_eq!(progress.remaining_blocks, 0);
+    assert_eq!(progress.synced_percentage, 100.0);
+}
+
+#[test]
+fn test_configured_range_progress_uses_updated_target_height() {
+    let first_target = configured_range_progress(Some(109), 100, 109);
+    let updated_target = configured_range_progress(Some(109), 100, 119);
+
+    assert_eq!(first_target.synced_percentage, 100.0);
+    assert_eq!(updated_target.remaining_blocks, 10);
+    assert_eq!(updated_target.synced_percentage, 50.0);
+}
+
+#[test]
+fn test_adaptive_chunk_sizer_shrinks_for_dense_or_slow_chunks_and_grows_after_stable_chunks() {
+    let mut sizer = AdaptiveChunkSizer::new(AdaptiveChunkSizerConfig {
+        min_chunk_size: 1,
+        local_processing_shrink_threshold: Duration::from_millis(100),
+        dense_returned_row_threshold: 10,
+        sparse_returned_row_threshold: 2,
+        stable_chunks_to_grow: 2,
+        ..AdaptiveChunkSizerConfig::for_max_chunk_size(16)
+    })
+    .expect("valid adaptive chunk config");
+
+    assert_eq!(sizer.current_chunk_size(), 16);
+
+    sizer.record_chunk(adaptive_feedback(11, Duration::from_millis(10)));
+    assert_eq!(sizer.current_chunk_size(), 8);
+
+    sizer.record_chunk(adaptive_feedback(1, Duration::from_millis(120)));
+    assert_eq!(sizer.current_chunk_size(), 4);
+
+    sizer.record_chunk(adaptive_feedback(1, Duration::from_millis(10)));
+    assert_eq!(sizer.current_chunk_size(), 4);
+
+    sizer.record_chunk(adaptive_feedback(1, Duration::from_millis(10)));
+    assert_eq!(sizer.current_chunk_size(), 8);
+
+    sizer.record_chunk(adaptive_feedback(1, Duration::from_millis(10)));
+    sizer.record_chunk(adaptive_feedback(1, Duration::from_millis(10)));
+    assert_eq!(sizer.current_chunk_size(), 16);
+}
+
+#[test]
+fn test_adaptive_chunk_sizer_plans_contiguous_checkpoint_ranges_after_resize() {
+    let mut sizer = AdaptiveChunkSizer::new(AdaptiveChunkSizerConfig {
+        min_chunk_size: 1,
+        local_processing_shrink_threshold: Duration::from_millis(100),
+        dense_returned_row_threshold: 5,
+        sparse_returned_row_threshold: 1,
+        stable_chunks_to_grow: 1,
+        ..AdaptiveChunkSizerConfig::for_max_chunk_size(4)
+    })
+    .expect("valid adaptive chunk config");
+    let mut checkpoint = checkpoint(10);
+
+    let first = sizer
+        .plan_next_range(&checkpoint, 20)
+        .expect("valid range")
+        .expect("range");
+    assert_eq!(
+        first,
+        CheckpointBlockRange {
+            from_block: 10,
+            to_block: 13,
+        }
+    );
+
+    sizer.record_chunk(adaptive_feedback(6, Duration::from_millis(10)));
+    checkpoint.next_block = first.to_block + 1;
+
+    let second = sizer
+        .plan_next_range(&checkpoint, 20)
+        .expect("valid range")
+        .expect("range");
+    assert_eq!(
+        second,
+        CheckpointBlockRange {
+            from_block: 14,
+            to_block: 15,
+        }
+    );
+
+    sizer.record_chunk(adaptive_feedback(0, Duration::from_millis(10)));
+    checkpoint.next_block = second.to_block + 1;
+
+    let third = sizer
+        .plan_next_range(&checkpoint, 20)
+        .expect("valid range")
+        .expect("range");
+    assert_eq!(
+        third,
+        CheckpointBlockRange {
+            from_block: 16,
+            to_block: 19,
+        }
+    );
+}
+
+fn adaptive_feedback(
+    returned_row_count: usize,
+    local_processing_write_duration: Duration,
+) -> AdaptiveChunkFeedback {
+    AdaptiveChunkFeedback {
+        returned_row_count,
+        local_processing_write_duration,
+        read_duration: Duration::from_millis(10),
+        warmup_effectiveness: DatalensWarmupEffectivenessAggregation::new(),
+    }
+}

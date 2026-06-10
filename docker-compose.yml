@@ -3,8 +3,8 @@ services:
     image: postgres:17-alpine
     shm_size: 1gb
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_PASSWORD: ${DEGOV_DB_PASSWORD}
+      POSTGRES_DB: ${DEGOV_DB_NAME:-postgres}
+      POSTGRES_PASSWORD: ${DEGOV_DB_PASSWORD:-postgres}
     volumes:
       - ./.data/postgres:/var/lib/postgresql/data
       - ./init-scripts/postgres:/docker-entrypoint-initdb.d
@@ -13,8 +13,60 @@ services:
     networks:
       - degov
 
+  indexer-migrate:
+    image: degov-indexer
+    profiles:
+      - indexer
+    depends_on:
+      - postgres
+    build:
+      context: .
+      dockerfile: docker/indexer.Dockerfile
+    command: migrate
+    environment:
+      DEGOV_INDEXER_DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/indexer
+
   indexer:
     image: degov-indexer
+    profiles:
+      - indexer
+    depends_on:
+      - postgres
+    build:
+      context: .
+      dockerfile: docker/indexer.Dockerfile
+    command: run
+    volumes:
+      - ./apps/indexer/indexer.example.yml:/app/indexer.yml:ro
+    environment:
+      DEGOV_INDEXER_DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/indexer
+      DEGOV_INDEXER_CONFIG_FILE: ${DEGOV_INDEXER_CONFIG_FILE:-/app/indexer.yml}
+      DEGOV_INDEXER_CONTRACT_SET_MODE: ${DEGOV_INDEXER_CONTRACT_SET_MODE:-all}
+      DEGOV_INDEXER_DAO_CODE: ${DEGOV_INDEXER_DAO_CODE:-}
+      DEGOV_INDEXER_TARGET_HEIGHT: ${DEGOV_INDEXER_TARGET_HEIGHT:-latest}
+      DEGOV_INDEXER_RUN_ONCE: ${DEGOV_INDEXER_RUN_ONCE:-false}
+      DEGOV_INDEXER_POLL_INTERVAL_MS: ${DEGOV_INDEXER_POLL_INTERVAL_MS:-10000}
+      DATALENS_ENDPOINT: ${DATALENS_ENDPOINT:-}
+      DATALENS_APPLICATION: ${DATALENS_APPLICATION:-}
+      DATALENS_TOKEN: ${DATALENS_TOKEN:-}
+      DATALENS_TIMEOUT_SECONDS: ${DATALENS_TIMEOUT_SECONDS:-60}
+      DATALENS_FINALITY: ${DATALENS_FINALITY:-durable_only}
+      DATALENS_CHAIN_FAMILY: ${DATALENS_CHAIN_FAMILY:-evm}
+      DATALENS_CHAIN_NAME: ${DATALENS_CHAIN_NAME:-ethereum}
+      DATALENS_CHAIN_ID: ${DATALENS_CHAIN_ID:-1}
+      DATALENS_DATASET_FAMILY: ${DATALENS_DATASET_FAMILY:-evm}
+      DATALENS_DATASET_NAME: ${DATALENS_DATASET_NAME:-logs}
+      DATALENS_QUERY_BLOCK_RANGE_LIMIT: ${DATALENS_QUERY_BLOCK_RANGE_LIMIT:-1000}
+      DATALENS_CHAINS_JSON: ${DATALENS_CHAINS_JSON:-}
+      DATALENS_GOVERNOR_ADDRESS: ${DATALENS_GOVERNOR_ADDRESS:-}
+      DATALENS_GOVERNOR_TOKEN_ADDRESS: ${DATALENS_GOVERNOR_TOKEN_ADDRESS:-}
+      DATALENS_GOVERNOR_TOKEN_STANDARD: ${DATALENS_GOVERNOR_TOKEN_STANDARD:-}
+      DATALENS_TIMELOCK_ADDRESS: ${DATALENS_TIMELOCK_ADDRESS:-}
+
+  onchain-worker:
+    image: degov-indexer
+    profiles:
+      - indexer
     depends_on:
       - postgres
     build:
@@ -57,8 +109,8 @@ services:
 #    ports:
 #      - "${DEGOV_WEB_PORT:-3000}:3000"
     environment:
-      JWT_SECRET_KEY: ${DEGOV_WEB_JWT_SECRET}
-      DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD}@postgres/degov
+      JWT_SECRET_KEY: ${DEGOV_WEB_JWT_SECRET:-}
+      DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/degov
       # DEGOV_CONFIG_PATH: degov.yml
     networks:
       - degov

@@ -1,0 +1,34 @@
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+default:
+    @just --list
+
+# Environment
+install:
+    cargo fetch --locked
+
+build:
+    cargo build --locked
+
+test:
+    node ./scripts/check-rust-conventions.mjs
+    node ./scripts/runtime-packaging.test.mjs
+    node ./scripts/indexer-diagnostics.test.mjs
+    node ./scripts/indexer-accuracy-audit.test.mjs
+    node ./scripts/indexer-accuracy-diagnose.test.mjs
+    node ./scripts/indexer-reconcile-diagnose.test.mjs
+    cargo test --locked
+    node ./scripts/check-rust-conventions.test.mjs
+    node ./scripts/compatibility-preflight.test.mjs
+
+test-unit:
+    cargo test --locked
+
+test-accuracy:
+    node ./scripts/indexer-diagnostics.test.mjs
+    node ./scripts/indexer-accuracy-audit.test.mjs
+    node ./scripts/indexer-accuracy-diagnose.test.mjs
+    node ./scripts/indexer-reconcile-diagnose.test.mjs
+
+test-integration:
+    @just test

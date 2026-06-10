@@ -1,0 +1,114 @@
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+
+import { DelegationList } from "@/components/delegation-list";
+import { DelegationTable } from "@/components/delegation-table";
+import type {
+  DelegationSortDirection,
+  DelegationSortField,
+  DelegationSortState,
+} from "@/components/delegation-table";
+import { ResponsiveRenderer } from "@/components/responsive-renderer";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import type { Address } from "viem";
+
+interface ReceivedDelegationsProps {
+  address: Address;
+}
+
+const DEFAULT_SORT_STATE: DelegationSortState = {
+  field: "date",
+  direction: "desc",
+};
+
+const ORDER_BY_MAP: Record<
+  DelegationSortField,
+  Record<DelegationSortDirection, string>
+> = {
+  date: {
+    asc: "blockTimestamp_ASC_NULLS_LAST",
+    desc: "blockTimestamp_DESC_NULLS_LAST",
+  },
+  power: {
+    asc: "power_ASC",
+    desc: "power_DESC",
+  },
+};
+
+export function ReceivedDelegations({ address }: ReceivedDelegationsProps) {
+  const t = useTranslations("profile.receivedDelegations");
+  const [sortState, setSortState] =
+    useState<DelegationSortState>(DEFAULT_SORT_STATE);
+  const [totalCount, setTotalCount] = useState<number>();
+
+  useEffect(() => {
+    setTotalCount(undefined);
+  }, [address]);
+
+  const getDisplayTitle = () => {
+    if (totalCount !== undefined) {
+      return t("titleWithCount", { count: totalCount });
+    }
+    return t("title");
+  };
+
+  const orderBy = ORDER_BY_MAP[sortState.field][sortState.direction];
+
+  const applySortState = (
+    field: DelegationSortField,
+    direction?: DelegationSortDirection
+  ) => {
+    if (!direction) {
+      setSortState(DEFAULT_SORT_STATE);
+      return;
+    }
+
+    setSortState({ field, direction });
+  };
+
+  const handleDateSortChange = (direction?: DelegationSortDirection) =>
+    applySortState("date", direction);
+
+  const handlePowerSortChange = (direction?: DelegationSortDirection) =>
+    applySortState("power", direction);
+
+  return (
+    <div className="flex flex-col gap-[15px] lg:gap-[20px]">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <h3 className="text-[16px] lg:text-[18px] font-semibold">
+          {getDisplayTitle()}
+        </h3>
+      </div>
+      <ResponsiveRenderer
+        desktop={
+          <DelegationTable
+            address={address}
+            orderBy={orderBy}
+            sortState={sortState}
+            onDateSortChange={handleDateSortChange}
+            onPowerSortChange={handlePowerSortChange}
+            onTotalCountChange={setTotalCount}
+          />
+        }
+        mobile={
+          <DelegationList
+            address={address}
+            orderBy={orderBy}
+            onTotalCountChange={setTotalCount}
+          />
+        }
+        loadingFallback={
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="rounded-[14px] bg-card p-4">
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        }
+      />
+    </div>
+  );
+}

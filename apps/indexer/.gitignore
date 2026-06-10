@@ -1,0 +1,17 @@
+/node_modules
+/lib
+/build
+/dist
+/builds
+/target
+
+/**Versions.json
+
+# IDE files
+/.idea
+
+*.local.*
+
+.env
+
+generated

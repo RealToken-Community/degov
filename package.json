@@ -1,8 +1,23 @@
 {
   "name": "degov",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
   "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "audit:accuracy": "node apps/indexer/scripts/indexer-accuracy-audit.mjs",
+    "audit:diagnose": "node apps/indexer/scripts/indexer-accuracy-diagnose.mjs",
+    "audit:diagnose-address": "pnpm run audit:diagnose",
+    "audit:reconcile": "node apps/indexer/scripts/indexer-reconcile-diagnose.mjs",
+    "audit:tally-onchain": "node apps/indexer/scripts/indexer-tally-onchain-e2e.mjs",
+    "indexer": "cargo run -p degov-datalens-indexer --locked -- run",
+    "indexer:build": "cargo build -p degov-datalens-indexer --locked",
+    "indexer:graphql": "cargo run -p degov-datalens-indexer --locked -- graphql",
+    "indexer:migrate": "cargo run -p degov-datalens-indexer --locked -- migrate",
+    "indexer:smoke-datalens": "cargo run -p degov-datalens-indexer --locked -- smoke-datalens",
+    "indexer:worker": "cargo run -p degov-datalens-indexer --locked -- worker",
+    "test:indexer": "cargo test -p degov-datalens-indexer --locked",
+    "test:indexer-scripts": "node apps/indexer/scripts/indexer-diagnostics.test.mjs && node apps/indexer/scripts/runtime-packaging.test.mjs && node apps/indexer/scripts/staging-deployment-contract.test.mjs && node apps/indexer/scripts/indexer-accuracy-audit.test.mjs && node apps/indexer/scripts/indexer-accuracy-diagnose.test.mjs && node apps/indexer/scripts/indexer-reconcile-diagnose.test.mjs && node apps/indexer/scripts/v4-parity-audit.test.mjs && node apps/indexer/scripts/indexer-tally-onchain-e2e.test.mjs"
+  },
   "pnpm": {
     "packageExtensions": {
       "@hookform/resolvers@4.1.3": {
@@ -17,9 +32,9 @@
       }
     },
     "overrides": {
-      "axios": "^1.15.0",
+      "axios": "^1.16.1",
       "follow-redirects": "^1.16.0",
-      "hono": "^4.12.12",
+      "hono": "^4.12.19",
       "@hono/node-server": "^1.19.13",
       "effect": "^3.20.0",
       "lodash": "^4.18.0",

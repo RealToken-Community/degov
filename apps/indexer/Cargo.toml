@@ -1,0 +1,32 @@
+[package]
+name = "degov-datalens-indexer"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+anyhow = "1.0.100"
+async-graphql = "7.2.1"
+async-graphql-axum = "7.2.1"
+axum = "0.8.9"
+clap = { version = "4.6.1", features = ["derive"] }
+config = { version = "0.15.23", default-features = false, features = ["yaml", "json", "toml"] }
+datalens-sdk = { git = "https://github.com/ringecosystem/datalens", rev = "4eb2c85aa725a2141dd2fa5ae34a02da9043707c" }
+ethabi = "18.0.0"
+figment = { version = "0.10.19", features = ["env"] }
+hex = "0.4.3"
+log = "0.4.30"
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "json", "rustls"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+sha3 = "0.10.9"
+sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros", "migrate"] }
+thiserror = "2.0.17"
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
+tracing-log = "0.2.0"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["ansi", "env-filter", "fmt"] }
+
+[dev-dependencies]
+temp-env = "0.3.6"
+tokio = { version = "1.52.3", features = ["sync"] }
