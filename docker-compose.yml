@@ -72,21 +72,59 @@ services:
     build:
       context: .
       dockerfile: docker/indexer.Dockerfile
+    command: worker
+    networks:
+      - degov
+    volumes:
+      - ./apps/indexer/indexer.example.yml:/app/indexer.yml:ro
+    environment:
+      DEGOV_INDEXER_DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/indexer
+      DEGOV_INDEXER_CONFIG_FILE: ${DEGOV_INDEXER_CONFIG_FILE:-/app/indexer.yml}
+      DEGOV_ONCHAIN_REFRESH_WORKER_ENABLED: ${DEGOV_ONCHAIN_REFRESH_WORKER_ENABLED:-false}
+      DEGOV_ONCHAIN_REFRESH_RPC_URL: ${DEGOV_ONCHAIN_REFRESH_RPC_URL:-}
+      DEGOV_ONCHAIN_REFRESH_RUN_ONCE: ${DEGOV_ONCHAIN_REFRESH_RUN_ONCE:-false}
+      DEGOV_ONCHAIN_REFRESH_BATCH_SIZE: ${DEGOV_ONCHAIN_REFRESH_BATCH_SIZE:-100}
+      DEGOV_INDEXER_ONCHAIN_REFRESH_APPLY_BATCH_SIZE: ${DEGOV_INDEXER_ONCHAIN_REFRESH_APPLY_BATCH_SIZE:-1000}
+      DEGOV_ONCHAIN_REFRESH_MAX_ATTEMPTS: ${DEGOV_ONCHAIN_REFRESH_MAX_ATTEMPTS:-3}
+      DEGOV_ONCHAIN_REFRESH_RECONCILE_SEED_BATCH_SIZE: ${DEGOV_ONCHAIN_REFRESH_RECONCILE_SEED_BATCH_SIZE:-100}
+      DEGOV_ONCHAIN_REFRESH_MULTICALL_CHUNK_SIZE: ${DEGOV_ONCHAIN_REFRESH_MULTICALL_CHUNK_SIZE:-100}
+      DEGOV_ONCHAIN_REFRESH_CONCURRENCY: ${DEGOV_ONCHAIN_REFRESH_CONCURRENCY:-1}
+      DEGOV_ONCHAIN_REFRESH_CURRENT_POWER_METHOD: ${DEGOV_ONCHAIN_REFRESH_CURRENT_POWER_METHOD:-getVotes}
+      DEGOV_ONCHAIN_REFRESH_MAX_BATCHES_PER_POLL: ${DEGOV_ONCHAIN_REFRESH_MAX_BATCHES_PER_POLL:-1}
+      DEGOV_ONCHAIN_REFRESH_MAX_SYNC_LAG_BLOCKS: ${DEGOV_ONCHAIN_REFRESH_MAX_SYNC_LAG_BLOCKS:-1000}
+      DEGOV_ONCHAIN_REFRESH_POLL_INTERVAL_MS: ${DEGOV_ONCHAIN_REFRESH_POLL_INTERVAL_MS:-10000}
+      DEGOV_ONCHAIN_REFRESH_DEBOUNCE_MS: ${DEGOV_ONCHAIN_REFRESH_DEBOUNCE_MS:-120000}
+      DEGOV_ONCHAIN_REFRESH_LOCK_TTL_MS: ${DEGOV_ONCHAIN_REFRESH_LOCK_TTL_MS:-300000}
+      DEGOV_ONCHAIN_REFRESH_RETRY_DELAY_MS: ${DEGOV_ONCHAIN_REFRESH_RETRY_DELAY_MS:-30000}
+      DEGOV_ONCHAIN_REFRESH_REQUEST_TIMEOUT_MS: ${DEGOV_ONCHAIN_REFRESH_REQUEST_TIMEOUT_MS:-15000}
+
+  indexer-graphql:
+    image: degov-indexer
+    profiles:
+      - indexer
+    depends_on:
+      - postgres
+    build:
+      context: .
+      dockerfile: docker/indexer.Dockerfile
+    command: graphql
 #    ports:
 #      - "${DEGOV_INDEXER_PORT:-4350}:4350"
     volumes:
       - ./degov.yml:/app/degov.yml
     environment:
-      DB_HOST: postgres
-      DB_NAME: indexer
-      DB_USER: postgres
-      DB_PASS: ${DEGOV_DB_PASSWORD}
-      DB_PORT: 5432
-      GQL_PORT: 4350
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_DEFAULT_MODEL: ${OPENROUTER_DEFAULT_MODEL}
-      CHAIN_RPC_1: ${CHAIN_RPC_1}
-      DEGOV_CONFIG_PATH: degov.yml
+      DEGOV_INDEXER_DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/indexer
+      DEGOV_INDEXER_GRAPHQL_ENDPOINT: ${DEGOV_INDEXER_GRAPHQL_BIND_ENDPOINT:-http://0.0.0.0:4350/graphql}
+#      DB_HOST: postgres
+#      DB_NAME: indexer
+#      DB_USER: postgres
+#      DB_PASS: ${DEGOV_DB_PASSWORD}
+#      DB_PORT: 5432
+#      GQL_PORT: 4350
+#      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+#      OPENROUTER_DEFAULT_MODEL: ${OPENROUTER_DEFAULT_MODEL}
+#      CHAIN_RPC_1: ${CHAIN_RPC_1}
+#      DEGOV_CONFIG_PATH: degov.yml
       # CHAIN_RPC_10: ${CHAIN_RPC_10}
       # CHAIN_RPC_...: ${CHAIN_RPC_...}
     networks:
@@ -121,6 +159,26 @@ services:
 #      - "traefik.http.routers.degov-web.middlewares=auth@file"
       - "traefik.http.services.degov-web.loadbalancer.server.port=3000"
     restart: unless-stopped
+
+  web-local-indexer:
+    image: degov-web-local-indexer
+    profiles:
+      - indexer
+    depends_on:
+      - postgres
+      - indexer-graphql
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args:
+        DEGOV_CONFIG_INDEXER_ENDPOINT: ${DEGOV_INDEXER_GRAPHQL_INTERNAL_ENDPOINT:-http://indexer-graphql:4350/graphql}
+#    ports:
+#      - "${DEGOV_WEB_INDEXER_PORT:-3001}:3000"
+    networks:
+      - degov
+    environment:
+      JWT_SECRET_KEY: ${DEGOV_WEB_JWT_SECRET:-}
+      DATABASE_URL: postgresql://postgres:${DEGOV_DB_PASSWORD:-postgres}@postgres/degov
 
 networks:
   degov:
